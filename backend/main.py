@@ -27,8 +27,8 @@ app.add_middleware(
 )
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
-mydb = myclient["sequence"]
-mycol = mydb["f_user_collection"]
+mydb = myclient["testdb"]
+mycol = mydb["testusers"]
 
 
 class User(BaseModel):
