@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-app = FastAPI()
+
 
 from pydantic import BaseModel
 from typing import Optional
@@ -16,8 +16,8 @@ from typing import Union
 
 import pymongo
 
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+app = FastAPI()
 
 @app.get("/items/")
 async def read_items(token: str = Depends(oauth2_scheme)):
@@ -39,10 +39,35 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["testdb"]
 mycol = mydb["testusers"]
 
+#temporary fake db details into a dictionary
+
+
+
+x=mycol.find({},{"email":1,"password":1})
+dbdict=dict()
+for data in x:
+    em=data["email"]
+    dbdict[em]={"password":data["password"]}
+
 class User(BaseModel):
     username: str
     email: str
     password:str
+
+
+class UserInDB(User):
+    hashed_password: str
+
+def get_user(db, username: str):
+    if username in db:
+        user_dict = db[username]
+        return UserInDB(**user_dict)
+
+def fake_decode_token(token):
+    # This doesn't provide any security at all
+    # Check the next version
+    user = get_user(dbdict, token)
+    return user
 
 
 class Login(BaseModel):
@@ -63,7 +88,18 @@ def fake_decode_token(token):
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     user = fake_decode_token(token)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authentication credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
+
+async def get_current_active_user(current_user: User = Depends(get_current_user)):
+    if current_user.disabled:
+        raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
 
 
 
@@ -80,6 +116,8 @@ def create_user(request:User):
    user_object["password"] = hashed_pass
    user_id = mycol.insert_one(user_object)
    return {"res":"created"}
+
+#token endpoint
 @app.post('/login')
 def login(request:OAuth2PasswordRequestForm = Depends()):
     user = mycol.find_one({"username":request.username})
