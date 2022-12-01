@@ -47,16 +47,19 @@ x=mycol.find({},{"username":1,"password":1})
 dbdict=dict()
 for data in x:
     em=data["username"]
-    dbdict[em]={"password":data["password"]}
+    dbdict[em]={"password":data["password"],"username":em}
+
+
 
 class User(BaseModel):
     username: str
-    email: str
-    password:str
+    email: Union[str, None] = None
+    password: Union[str, None] = None
+    disabled: Union[bool, None] = None
 
 
 class UserInDB(User):
-    hashed_password: str
+    password: str
 
 def get_user(db, username: str):
     if username in db:
@@ -80,13 +83,10 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     username: Optional[str] = None
 
-def fake_decode_token(token):
-    return User(
-        username=token + "fakedecoded", email="john@example.com", full_name="John Doe"
-    )
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
+    print(token)
     user = fake_decode_token(token)
     if not user:
         raise HTTPException(
@@ -118,20 +118,22 @@ def create_user(request:User):
    return {"res":"created"}
 
 #token endpoint
-@app.post('/login')
+@app.post('/token')
 def login(request:OAuth2PasswordRequestForm = Depends()):
-    user = mycol.find_one({"username":request.username})
-    if not user:
+    user_dict = mycol.find_one({"username":request.username})
+    if not user_dict:
        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    if not Hash.verify(user["password"],request.password):
+    #user = UserInDB(**user_dict)
+    if not Hash.verify(user_dict["password"],request.password):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    access_token = create_access_token(data={"sub": user["username"] })
+    access_token = create_access_token(data={"sub": user_dict["username"] })
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @app.get("/users/me")
 async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
+
 
 
 
