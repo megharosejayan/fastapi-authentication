@@ -43,10 +43,10 @@ mycol = mydb["testusers"]
 
 
 
-x=mycol.find({},{"email":1,"password":1})
+x=mycol.find({},{"username":1,"password":1})
 dbdict=dict()
 for data in x:
-    em=data["email"]
+    em=data["username"]
     dbdict[em]={"password":data["password"]}
 
 class User(BaseModel):
