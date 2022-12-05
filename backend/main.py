@@ -43,11 +43,11 @@ mycol = mydb["testusers"]
 
 
 
-x=mycol.find({},{"username":1,"password":1})
+x=mycol.find({},{"username":1,"password":1,"email":1})
 dbdict=dict()
 for data in x:
     em=data["username"]
-    dbdict[em]={"password":data["password"],"username":em}
+    dbdict[em]={"password":data["password"],"username":em,"email":data["email"]}
 
 
 
