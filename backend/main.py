@@ -123,11 +123,11 @@ def login(request:OAuth2PasswordRequestForm = Depends()):
     user_dict = mycol.find_one({"username":request.username})
     if not user_dict:
        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    #user = UserInDB(**user_dict)
+    user = UserInDB(**user_dict)
     if not Hash.verify(user_dict["password"],request.password):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    access_token = create_access_token(data={"sub": user_dict["username"] })
-    return {"access_token": access_token, "token_type": "bearer"}
+    # access_token = create_access_token(data={"sub": user_dict["username"] })
+    return {"access_token": user.username, "token_type": "bearer"}
 
 
 
