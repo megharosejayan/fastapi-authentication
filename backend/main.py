@@ -6,7 +6,7 @@ from typing import Optional
 
 from hashing import Hash
 from fastapi import FastAPI, HTTPException, Depends, Request,status
-from oauth import get_current_user
+# from oauth import get_current_user
 from jwttoken import create_access_token
 from fastapi.security import OAuth2PasswordRequestForm,OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
@@ -62,10 +62,10 @@ class User(BaseModel):
 class UserInDB(User):
     password: str
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+def get_user(username: str):
+    user = mycol.find_one({"username":username})
+    if user:
+        return UserInDB(**user)
 
 def fake_decode_token(token):
     # This doesn't provide any security at all
@@ -87,7 +87,6 @@ class TokenData(BaseModel):
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    # print(token)
     # user = fake_decode_token(token)
     credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -113,8 +112,8 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     return current_user
 
 
-async def authenticate_user(username: str, password: str):
-    user = mycol.find_one({"username":username})
+def authenticate_user(username: str, password: str):
+    user = get_user(username)
     if not user:
         return False
     if not Hash.verify(password,user.password):
@@ -140,14 +139,18 @@ def create_user(request:User):
 #token endpoint
 @app.post('/token')
 def login(request:OAuth2PasswordRequestForm = Depends()):
-    user_dict = mycol.find_one({"username":request.username})
-    if not user_dict:
-       raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    user = UserInDB(**user_dict)
-    if not Hash.verify(user_dict["password"],request.password):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    # access_token = create_access_token(data={"sub": user_dict["username"] })
-    return {"access_token": user.username, "token_type": "bearer"}
+    user = authenticate_user(request.username, request.password)
+    if not user:
+       raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Incorrect username or password"
+        )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub":user.username}, expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 
