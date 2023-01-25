@@ -39,16 +39,17 @@ app.add_middleware(
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 mydb = myclient["testdb"]
 mycol = mydb["testusers"]
+mycol2 = mydb["testusers2"]
 
 #temporary fake db details into a dictionary
 
 
 
-x=mycol.find({},{"username":1,"password":1,"email":1})
+# x=mycol.find({},{"username":1,"password":1,"email":1})
 dbdict=dict()
-for data in x:
-    em=data["username"]
-    dbdict[em]={"password":data["password"],"username":em,"email":data["email"]}
+# for data in x:
+#     em=data["username"]
+#     dbdict[em]={"password":data["password"],"username":em,"email":data["email"]}
 
 
 
@@ -64,14 +65,16 @@ class UserInDB(User):
 
 def get_user(username: str):
     user = mycol.find_one({"username":username})
+    if not user:
+        user = mycol2.find_one({"username":username})
     if user:
         return UserInDB(**user)
 
-def fake_decode_token(token):
-    # This doesn't provide any security at all
-    # Check the next version
-    user = get_user(dbdict, token)
-    return user
+# def fake_decode_token(token):
+#     # This doesn't provide any security at all
+#     # Check the next version
+#     user = get_user(dbdict, token)
+#     return user
 
 
 class Login(BaseModel):
@@ -87,7 +90,7 @@ class TokenData(BaseModel):
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    # user = fake_decode_token(token)
+    print(token)
     credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid authentication credentials",
