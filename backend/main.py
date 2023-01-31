@@ -139,8 +139,16 @@ def create_user(request:User):
    user_id = mycol.insert_one(user_object)
    return {"res":"created"}
 
+@app.post('/register2')
+def create_user2(request:User):
+   hashed_pass = Hash.bcrypt(request.password)
+   user_object = dict(request)
+   user_object["password"] = hashed_pass
+   user_id = mycol2.insert_one(user_object)
+   return {"res":"created for second type"}
+
 #token endpoint
-@app.post('/token')
+@app.post('/token', response_model=Token)
 def login(request:OAuth2PasswordRequestForm = Depends()):
     user = authenticate_user(request.username, request.password)
     if not user:
